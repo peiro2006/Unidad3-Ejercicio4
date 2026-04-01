@@ -1,5 +1,9 @@
 package com.programacion4.unidad3ej4.feature.producto.services.impl.domain;
 
+import com.programacion4.unidad3ej4.config.NotFoundException;
+import com.programacion4.unidad3ej4.config.exceptions.ConflictException;
+import com.programacion4.unidad3ej4.feature.producto.models.Categoria;
+import com.programacion4.unidad3ej4.feature.producto.repositories.ICategoriaRepository;
 import org.springframework.stereotype.Service;
 
 import com.programacion4.unidad3ej4.config.exceptions.BadRequestException;
@@ -18,21 +22,37 @@ import lombok.AllArgsConstructor;
 @AllArgsConstructor
 public class ProductoCreateService implements IProductoCreateService {
 
+    private final ICategoriaRepository categoriaRepository;
     private final IProductoExistByNameService productoExistByNameService;
 
     private final IProductoRepository productoRepository;
+
+    private String capitaliza(String text) {
+        if (text==null || text.isEmpty()) return text;
+
+        text = text.toLowerCase();
+        return text.substring(0,1).toUpperCase() + text.substring(1);
+    }
 
     @Override
     public ProductoResponseDto create(ProductoCreateRequestDto dto) {
 
         if (productoExistByNameService.existByName(dto.getNombre())) {
-            throw new BadRequestException("El nombre del producto ya existe");
+            throw new ConflictException("El nombre del producto ya existe");
         }
 
-        Producto productoAGuardar = ProductoMapper.toEntity(dto, null);
+        Categoria categoria = categoriaRepository.findById(dto.getCategoriaId())
+                .orElseThrow(() -> new NotFoundException("No se encontró la categoría."));
+
+        dto.setNombre(capitaliza(dto.getNombre()));
+        dto.setDescripcion(capitaliza(dto.getDescripcion()));
+
+        Producto productoAGuardar = ProductoMapper.toEntity(dto, categoria);
         
         Producto productoGuardado = productoRepository.save(productoAGuardar);
 
         return ProductoMapper.toResponseDto(productoGuardado);
     }
 }
+
+
